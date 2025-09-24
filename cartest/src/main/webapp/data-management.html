@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据管理 - 乘用车销售数据可视化平台</title>
+    <!-- 引入外部资源 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+
+    <!-- 配置Tailwind自定义颜色 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#36CFC9',
+                        accent: '#722ED1',
+                        success: '#52C41A',
+                        warning: '#FAAD14',
+                        danger: '#F5222D',
+                        dark: '#1D2129',
+                        'light-dark': '#4E5969',
+                        'extra-light': '#F2F3F5'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- 自定义工具类 -->
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .card-shadow {
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            }
+            .transition-all-300 {
+                transition: all 300ms ease-in-out;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-dark">
+<!-- 顶部导航栏 -->
+<header class="bg-white shadow-md fixed top-0 left-0 right-0 z-50">
+    <div class="container mx-auto px-4">
+        <div class="flex justify-between items-center py-4">
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-car text-primary text-2xl"></i>
+                <h1 class="text-xl font-bold text-primary">乘用车销售数据可视化平台</h1>
+            </div>
+
+            <nav class="hidden md:flex items-center space-x-6">
+                <a href="dashboard.html" class="text-light-dark hover:text-primary transition-all-300 py-1">仪表盘</a>
+                <a href="sales-analysis.html" class="text-light-dark hover:text-primary transition-all-300 py-1">销售分析</a>
+                <a href="customer-analysis.html" class="text-light-dark hover:text-primary transition-all-300 py-1">客户分析</a>
+                <a href="product-analysis.html" class="text-light-dark hover:text-primary transition-all-300 py-1">产品分析</a>
+                <a href="data-management.html" class="text-primary font-medium border-b-2 border-primary py-1">数据管理</a>
+            </nav>
+
+            <div class="md:hidden">
+                <button id="mobile-menu-button" class="text-light-dark hover:text-primary">
+                    <i class="fa fa-bars text-xl"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 移动端菜单 -->
+    <div id="mobile-menu" class="hidden md:hidden bg-white border-t">
+        <div class="container mx-auto px-4 py-3 space-y-3">
+            <a href="dashboard.html" class="block text-light-dark hover:text-primary transition-all-300 py-2">仪表盘</a>
+            <a href="sales-analysis.html" class="block text-light-dark hover:text-primary transition-all-300 py-2">销售分析</a>
+            <a href="customer-analysis.html" class="block text-light-dark hover:text-primary transition-all-300 py-2">客户分析</a>
+            <a href="product-analysis.html" class="block text-light-dark hover:text-primary transition-all-300 py-2">产品分析</a>
+            <a href="data-management.html" class="block text-primary font-medium py-2">数据管理</a>
+        </div>
+    </div>
+</header>
+
+<!-- 主要内容 -->
+<main class="container mx-auto px-4 pt-24 pb-16">
+    <!-- 页面标题 -->
+    <div class="mb-8">
+        <h2 class="text-2xl font-bold mb-2">销售数据管理</h2>
+        <p class="text-light-dark">管理、查询和导入汽车销售数据</p>
+    </div>
+
+    <!-- 数据导入区域 -->
+    <div class="bg-white rounded-xl p-6 card-shadow mb-8">
+        <h3 class="font-bold text-lg mb-4">数据导入</h3>
+        <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-primary transition-all-300">
+            <i class="fa fa-cloud-upload text-4xl text-light-dark mb-4"></i>
+            <p class="mb-4">拖放CSV文件到此处，或点击选择文件</p>
+            <form id="csv-upload-form" enctype="multipart/form-data">
+                <input type="file" id="csv-file" name="file" accept=".csv" class="hidden">
+                <button type="button" id="select-file-btn" class="bg-primary hover:bg-primary/90 text-white px-6 py-2 rounded-lg transition-all-300 mr-3">
+                    选择CSV文件
+                </button>
+                <button type="submit" id="upload-btn" class="bg-success hover:bg-success/90 text-white px-6 py-2 rounded-lg transition-all-300" disabled>
+                    上传并导入
+                </button>
+            </form>
+            <p id="selected-file-name" class="mt-4 text-sm text-light-dark hidden"></p>
+            <div id="upload-progress" class="mt-4 hidden">
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div id="progress-bar" class="bg-primary h-2.5 rounded-full" style="width: 0%"></div>
+                </div>
+                <p id="progress-text" class="mt-2 text-sm text-light-dark">正在上传...</p>
+            </div>
+            <div id="upload-success" class="mt-4 text-sm text-success hidden">
+                <i class="fa fa-check-circle"></i> 数据导入成功！
+            </div>
+            <div id="upload-error" class="mt-4 text-sm text-danger hidden">
+                <i class="fa fa-exclamation-circle"></i> <span id="error-message">数据导入失败，请重试。</span>
+            </div>
+            <p class="mt-4 text-xs text-light-dark">
+                <i class="fa fa-info-circle"></i> CSV文件格式要求：品牌,车型,车辆类型,地区,城市,区县,销售日期,销售数量,销售额,发动机型号,燃料种类,排量,所有权类型,用户性别,用户年龄
+            </p>
+        </div>
+    </div>
+
+    <!-- 数据查询和筛选区域 -->
+    <div class="bg-white rounded-xl p-6 card-shadow mb-8">
+        <h3 class="font-bold text-lg mb-4">数据查询与筛选</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div>
+                <label for="filter-brand" class="block text-sm font-medium text-light-dark mb-1">品牌</label>
+                <select id="filter-brand" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                    <option value="">所有品牌</option>
+                </select>
+            </div>
+            <div>
+                <label for="filter-model" class="block text-sm font-medium text-light-dark mb-1">车型</label>
+                <select id="filter-model" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50" disabled>
+                    <option value="">所有车型</option>
+                </select>
+            </div>
+            <div>
+                <label for="filter-region" class="block text-sm font-medium text-light-dark mb-1">地区</label>
+                <select id="filter-region" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                    <option value="">所有地区</option>
+                </select>
+            </div>
+            <div>
+                <label for="filter-date-range" class="block text-sm font-medium text-light-dark mb-1">日期范围</label>
+                <div class="flex space-x-2">
+                    <input type="date" id="filter-start-date" class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                    <input type="date" id="filter-end-date" class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                </div>
+            </div>
+        </div>
+        <div class="flex justify-end space-x-3">
+            <button id="reset-filters" class="border border-gray-300 hover:border-gray-400 text-light-dark px-6 py-2 rounded-lg transition-all-300">
+                重置筛选
+            </button>
+            <button id="apply-filters" class="bg-primary hover:bg-primary/90 text-white px-6 py-2 rounded-lg transition-all-300">
+                <i class="fa fa-search mr-1"></i> 查询数据
+            </button>
+        </div>
+    </div>
+
+    <!-- 数据表格区域 -->
+    <div class="bg-white rounded-xl p-6 card-shadow">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="font-bold text-lg">销售数据列表</h3>
+            <div class="flex items-center space-x-3">
+                <div class="text-sm text-light-dark">
+                    共 <span id="total-records" class="font-medium text-primary">0</span> 条记录
+                </div>
+                <div class="relative">
+                    <select id="page-size-select" class="border border-gray-300 rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm">
+                        <option value="10">10条/页</option>
+                        <option value="20">20条/页</option>
+                        <option value="50">50条/页</option>
+                        <option value="100">100条/页</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead>
+                <tr>
+                    <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-light-dark uppercase tracking-wider">品牌</th>
+                    <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-light-dark uppercase tracking-wider">车型</th>
+                    <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-light-dark uppercase tracking-wider">车辆类型</th>
+                    <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-light-dark uppercase tracking-wider">地区</th>
+                    <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-light-dark uppercase tracking-wider">销售日期</th>
+                    <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-light-dark uppercase tracking-wider">销售数量</th>
+                    <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-light-dark uppercase tracking-wider">销售额</th>
+                    <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-light-dark uppercase tracking-wider">操作</th>
+                </tr>
+                </thead>
+                <tbody id="sales-data-table" class="bg-white divide-y divide-gray-200">
+                <!-- 数据将通过JavaScript动态加载 -->
+                <tr>
+                    <td colspan="8" class="px-4 py-8 text-center text-light-dark">
+                        <i class="fa fa-spinner fa-spin mr-2"></i> 加载数据中...
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页控件 -->
+        <div id="pagination" class="flex justify-between items-center mt-6">
+            <div class="text-sm text-light-dark">
+                显示第 <span id="current-page-range" class="font-medium">1-10</span> 条，共 <span id="pagination-total" class="font-medium">0</span> 条
+            </div>
+            <div class="flex space-x-1">
+                <button id="prev-page" class="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <i class="fa fa-chevron-left text-xs"></i>
+                </button>
+                <div id="page-numbers" class="flex space-x-1">
+                    <!-- 页码将通过JavaScript动态生成 -->
+                </div>
+                <button id="next-page" class="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <i class="fa fa-chevron-right text-xs"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- 页脚 -->
+<footer class="bg-white border-t py-6">
+    <div class="container mx-auto px-4">
+        <div class="flex flex-col md:flex-row justify-between items-center">
+            <div class="mb-4 md:mb-0">
+                <p class="text-light-dark text-sm">&copy; 2023 乘用车销售数据可视化平台. 保留所有权利.</p>
+            </div>
+            <div class="flex space-x-4">
+                <a href="#" class="text-light-dark hover:text-primary transition-all-300">
+                    <i class="fa fa-question-circle"></i> 帮助中心
+                </a>
+                <a href="#" class="text-light-dark hover:text-primary transition-all-300">
+                    <i class="fa fa-file-text-o"></i> 使用文档
+                </a>
+                <a href="#" class="text-light-dark hover:text-primary transition-all-300">
+                    <i class="fa fa-envelope-o"></i> 联系我们
+                </a>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- JavaScript -->
+<script>
+    // 全局变量
+    let currentPage = 1;
+    let pageSize = 10;
+    let totalRecords = 0;
+
+    // 初始化页面
+    document.addEventListener('DOMContentLoaded', function() {
+        // 移动端菜单切换
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+
+        mobileMenuButton.addEventListener('click', function() {
+            mobileMenu.classList.toggle('hidden');
+        });
+
+        // 初始化拖放功能
+        initDragAndDrop();
+
+        // 加载筛选选项
+        loadFilterOptions();
+
+        // 加载销售数据
+        loadSalesData();
+
+        // 事件监听
+        document.getElementById('filter-brand').addEventListener('change', function() {
+            const brand = this.value;
+            if (brand) {
+                loadModelsByBrand(brand);
+                document.getElementById('filter-model').disabled = false;
+            } else {
+                document.getElementById('filter-model').innerHTML = '<option value="">所有车型</option>';
+                document.getElementById('filter-model').disabled = true;
+            }
+        });
+
+        document.getElementById('apply-filters').addEventListener('click', function() {
+            currentPage = 1; // 重置为第一页
+            loadSalesData();
+        });
+
+        document.getElementById('reset-filters').addEventListener('click', resetFilters);
+
+        document.getElementById('page-size-select').addEventListener('change', function() {
+            pageSize = parseInt(this.value);
+            currentPage = 1; // 重置为第一页
+            loadSalesData();
+        });
+
+        document.getElementById('prev-page').addEventListener('click', function() {
+            if (currentPage > 1) {
+                currentPage--;
+                loadSalesData();
+            }
+        });
+
+        document.getElementById('next-page').addEventListener('click', function() {
+            const totalPages = Math.ceil(totalRecords / pageSize);
+            if (currentPage < totalPages) {
+                currentPage++;
+                loadSalesData();
+            }
+        });
+
+        // 文件上传相关事件
+        const fileInput = document.getElementById('csv-file');
+        const selectFileBtn = document.getElementById('select-file-btn');
+        const uploadBtn = document.getElementById('upload-btn');
+        const fileNameDisplay = document.getElementById('selected-file-name');
+        const uploadForm = document.getElementById('csv-upload-form');
+
+        selectFileBtn.addEventListener('click', function() {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', function() {
+            handleFileSelection(this);
+        });
+
+        uploadForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            uploadCSVFile();
+        });
+    });
+
+    // 初始化拖放功能
+    function initDragAndDrop() {
+        const dropArea = document.querySelector('.border-dashed');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight() {
+            dropArea.classList.add('border-primary');
+            dropArea.classList.add('bg-primary/5');
+        }
+
+        function unhighlight() {
+            dropArea.classList.remove('border-primary');
+            dropArea.classList.remove('bg-primary/5');
+        }
+
+        dropArea.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+
+            if (files.length) {
+                const fileInput = document.getElementById('csv-file');
+                // 模拟文件输入
+                fileInput.files = files;
+                handleFileSelection(fileInput);
+            }
+        }
+    }
+
+    // 处理文件选择
+    function handleFileSelection(input) {
+        if (input.files.length > 0) {
+            const file = input.files[0];
+
+            // 验证文件类型
+            if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
+                showError('请选择CSV格式的文件');
+                input.value = '';
+                return;
+            }
+
+            // 增加文件大小限制到20MB（原为5MB）
+            const maxSize = 20 * 1024 * 1024; // 20MB
+            if (file.size > maxSize) {
+                showError(`文件大小不能超过20MB（当前文件大小：${formatFileSize(file.size)}）`);
+                input.value = '';
+                return;
+            }
+
+            const fileName = file.name;
+            document.getElementById('selected-file-name').textContent = `已选择: ${fileName} (${formatFileSize(file.size)})`;
+            document.getElementById('selected-file-name').classList.remove('hidden');
+            document.getElementById('upload-btn').disabled = false;
+        } else {
+            document.getElementById('selected-file-name').classList.add('hidden');
+            document.getElementById('upload-btn').disabled = true;
+        }
+    }
+
+    // 添加文件大小格式化辅助函数
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // 上传CSV文件
+    function uploadCSVFile() {
+        const fileInput = document.getElementById('csv-file');
+
+        if (fileInput.files.length === 0) {
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        // 显示上传进度
+        document.getElementById('upload-progress').classList.remove('hidden');
+        document.getElementById('upload-success').classList.add('hidden');
+        document.getElementById('upload-error').classList.add('hidden');
+        document.getElementById('progress-bar').style.width = '0%';
+        document.getElementById('progress-text').textContent = '正在上传...';
+
+        // 创建带进度的上传请求
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/car-sales/import-csv', true);
+
+        xhr.upload.addEventListener('progress', function(e) {
+            if (e.lengthComputable) {
+                const percent = (e.loaded / e.total) * 100;
+                document.getElementById('progress-bar').style.width = percent + '%';
+                document.getElementById('progress-text').textContent = `正在上传: ${Math.round(percent)}%`;
+            }
+        });
+
+        xhr.onload = function() {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.success) {
+                        document.getElementById('progress-bar').style.width = '100%';
+                        document.getElementById('progress-text').textContent = '上传完成，正在处理数据...';
+
+                        // 处理完成后更新UI
+                        setTimeout(() => {
+                            document.getElementById('upload-progress').classList.add('hidden');
+                            document.getElementById('upload-success').classList.remove('hidden');
+
+                            // 重置表单
+                            fileInput.value = '';
+                            document.getElementById('selected-file-name').classList.add('hidden');
+                            document.getElementById('upload-btn').disabled = true;
+
+                            // 重新加载数据
+                            loadSalesData();
+                        }, 800);
+                    } else {
+                        throw new Error(response.message || '导入失败');
+                    }
+                } catch (error) {
+                    showError(error.message);
+                }
+            } else {
+                showError('服务器错误，请稍后重试');
+            }
+        };
+
+        xhr.onerror = function() {
+            showError('网络错误，请检查网络连接');
+        };
+
+        xhr.send(formData);
+    }
+
+    // 显示错误信息
+    function showError(message) {
+        document.getElementById('upload-progress').classList.add('hidden');
+        document.getElementById('error-message').textContent = message;
+        document.getElementById('upload-error').classList.remove('hidden');
+    }
+
+    // 加载筛选选项
+    function loadFilterOptions() {
+        // 加载品牌
+        fetch('/api/car-sales/brands')
+            .then(response => {
+                if (!response.ok) throw new Error('品牌数据加载失败');
+                return response.json();
+            })
+            .then(brands => {
+                const brandSelect = document.getElementById('filter-brand');
+
+                brands.forEach(brand => {
+                    const option = document.createElement('option');
+                    option.value = brand;
+                    option.textContent = brand;
+                    brandSelect.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('加载品牌失败:', error);
+                showNotification('品牌数据加载失败', 'error');
+            });
+
+        // 加载地区
+        fetch('/api/car-sales/regions')
+            .then(response => {
+                if (!response.ok) throw new Error('地区数据加载失败');
+                return response.json();
+            })
+            .then(regions => {
+                const regionSelect = document.getElementById('filter-region');
+
+                regions.forEach(region => {
+                    const option = document.createElement('option');
+                    option.value = region;
+                    option.textContent = region;
+                    regionSelect.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('加载地区失败:', error);
+                showNotification('地区数据加载失败', 'error');
+            });
+    }
+
+    // 加载指定品牌的车型
+    function loadModelsByBrand(brand) {
+        fetch(`/api/car-sales/models?brand=${encodeURIComponent(brand)}`)
+            .then(response => {
+                if (!response.ok) throw new Error('车型数据加载失败');
+                return response.json();
+            })
+            .then(models => {
+                const modelSelect = document.getElementById('filter-model');
+                modelSelect.innerHTML = '<option value="">所有车型</option>';
+
+                models.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model;
+                    option.textContent = model;
+                    modelSelect.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('加载车型失败:', error);
+                showNotification('车型数据加载失败', 'error');
+            });
+    }
+
+    // 重置筛选条件
+    function resetFilters() {
+        document.getElementById('filter-brand').value = '';
+        document.getElementById('filter-model').innerHTML = '<option value="">所有车型</option>';
+        document.getElementById('filter-model').disabled = true;
+        document.getElementById('filter-region').value = '';
+        document.getElementById('filter-start-date').value = '';
+        document.getElementById('filter-end-date').value = '';
+
+        currentPage = 1;
+        loadSalesData();
+    }
+
+    // 加载销售数据
+    function loadSalesData() {
+        // 获取筛选条件
+        const brand = document.getElementById('filter-brand').value;
+        const model = document.getElementById('filter-model').value;
+        const region = document.getElementById('filter-region').value;
+        const startDate = document.getElementById('filter-start-date').value;
+        const endDate = document.getElementById('filter-end-date').value;
+
+        // 构建查询URL
+        let url = `/api/car-sales?page=${currentPage}&pageSize=${pageSize}`;
+        if (brand) url += `&brand=${encodeURIComponent(brand)}`;
+        if (model) url += `&model=${encodeURIComponent(model)}`;
+        if (region) url += `&region=${encodeURIComponent(region)}`;
+        if (startDate) url += `&startDate=${encodeURIComponent(startDate)}`;
+        if (endDate) url += `&endDate=${encodeURIComponent(endDate)}`;
+
+        // 显示加载状态
+        const tableBody = document.getElementById('sales-data-table');
+        tableBody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="px-4 py-8 text-center text-light-dark">
+                        <i class="fa fa-spinner fa-spin mr-2"></i> 加载数据中...
+                    </td>
+                </tr>
+            `;
+
+        // 禁用分页按钮
+        document.getElementById('prev-page').disabled = true;
+        document.getElementById('next-page').disabled = true;
+
+        // 发送请求
+        fetch(url)
+            .then(response => {
+                if (!response.ok) throw new Error('销售数据加载失败');
+                return response.json();
+            })
+            .then(data => {
+                // 假设API返回格式为 { data: [], total: 0 }
+                const salesData = data.data || data;
+                totalRecords = data.total || salesData.length;
+
+                // 更新表格数据
+                updateTableData(salesData);
+
+                // 更新分页控件
+                updatePagination();
+
+                // 更新总记录数显示
+                document.getElementById('total-records').textContent = totalRecords;
+                document.getElementById('pagination-total').textContent = totalRecords;
+            })
+            .catch(error => {
+                console.error('加载销售数据失败:', error);
+                tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="8" class="px-4 py-8 text-center text-danger">
+                                <i class="fa fa-exclamation-circle mr-2"></i> 加载数据失败，请重试
+                            </td>
+                        </tr>
+                    `;
+            });
+    }
+
+    // 更新表格数据
+    function updateTableData(data) {
+        const tableBody = document.getElementById('sales-data-table');
+
+        if (data.length === 0) {
+            tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="px-4 py-8 text-center text-light-dark">
+                            <i class="fa fa-info-circle mr-2"></i> 没有找到符合条件的数据
+                        </td>
+                    </tr>
+                `;
+            return;
+        }
+
+        let html = '';
+        data.forEach(sale => {
+            // 格式化日期
+            const saleDate = new Date(sale.saleDate || sale.销售日期);
+            const formattedDate = saleDate.toLocaleDateString('zh-CN');
+
+            // 格式化销售额
+            const amount = sale.salesAmount || sale.销售额;
+            const formattedAmount = new Intl.NumberFormat('zh-CN', {
+                style: 'currency',
+                currency: 'CNY',
+                minimumFractionDigits: 0
+            }).format(amount);
+
+            // 转换车辆类型显示文本
+            const vehicleType = sale.vehicleType || sale.车辆类型;
+            const vehicleTypeText = vehicleType === 'passenger' || vehicleType === '乘用车'
+                ? '乘用车'
+                : '商用车';
+
+            html += `
+                <tr>
+                    <td class="px-4 py-3 whitespace-nowrap">${sale.brand || sale.品牌}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">${sale.model || sale.车型}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">${vehicleTypeText}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">${sale.region || sale.地区}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">${formattedDate}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">${sale.salesVolume || sale.销售数量}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">${formattedAmount}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">
+                        <div class="flex space-x-2">
+                            <button class="text-primary hover:text-primary/80 transition-all-300"
+                                    title="编辑" onclick="editRecord(${sale.id || 0})">
+                                <i class="fa fa-pencil"></i>
+                            </button>
+                            <button class="text-danger hover:text-danger/80 transition-all-300"
+                                    title="删除" onclick="deleteRecord(${sale.id || 0})">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                `;
+        });
+
+        tableBody.innerHTML = html;
+    }
+
+    // 更新分页控件
+    function updatePagination() {
+        const totalPages = Math.ceil(totalRecords / pageSize);
+        const pageNumbersContainer = document.getElementById('page-numbers');
+
+        // 清空现有页码
+        pageNumbersContainer.innerHTML = '';
+
+        // 更新页码范围显示
+        const startRecord = (currentPage - 1) * pageSize + 1;
+        const endRecord = Math.min(currentPage * pageSize, totalRecords);
+        document.getElementById('current-page-range').textContent = `${startRecord}-${endRecord}`;
+
+        // 生成页码按钮
+        const maxVisiblePages = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+        let endPage = startPage + maxVisiblePages - 1;
+
+        if (endPage > totalPages) {
+            endPage = totalPages;
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+
+        // 添加第一页按钮（当起始页大于1时）
+        if (startPage > 1) {
+            addPageButton(1);
+            if (startPage > 2) {
+                addEllipsis();
+            }
+        }
+
+        // 添加中间页码
+        for (let i = startPage; i <= endPage; i++) {
+            addPageButton(i);
+        }
+
+        // 添加最后一页按钮（当结束页小于总页数时）
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                addEllipsis();
+            }
+            addPageButton(totalPages);
+        }
+
+        // 更新分页按钮状态
+        document.getElementById('prev-page').disabled = currentPage === 1;
+        document.getElementById('next-page').disabled = currentPage === totalPages || totalPages === 0;
+
+        // 添加页码按钮辅助函数
+        function addPageButton(pageNum) {
+            const button = document.createElement('button');
+            button.className = `px-3 py-1 border rounded ${pageNum === currentPage
+                ? 'border-primary bg-primary text-white'
+                : 'border-gray-300 hover:bg-gray-50'}`;
+            button.textContent = pageNum;
+            button.addEventListener('click', () => {
+                currentPage = pageNum;
+                loadSalesData();
+            });
+            pageNumbersContainer.appendChild(button);
+        }
+
+        // 添加省略号辅助函数
+        function addEllipsis() {
+            const ellipsis = document.createElement('span');
+            ellipsis.className = 'px-2 py-1 text-light-dark';
+            ellipsis.textContent = '...';
+            pageNumbersContainer.appendChild(ellipsis);
+        }
+    }
+
+    // 编辑记录
+    function editRecord(id) {
+        // 实际应用中这里会打开编辑对话框
+        alert(`编辑记录 #${id}（功能开发中）`);
+    }
+
+    // 删除记录
+    function deleteRecord(id) {
+        if (confirm('确定要删除这条记录吗？此操作不可撤销。')) {
+            // 实际应用中这里会发送删除请求
+            fetch(`/api/car-sales/${id}`, {
+                method: 'DELETE'
+            })
+                .then(response => {
+                    if (response.ok) {
+                        showNotification('记录删除成功', 'success');
+                        loadSalesData(); // 重新加载数据
+                    } else {
+                        throw new Error('删除失败');
+                    }
+                })
+                .catch(error => {
+                    console.error('删除记录失败:', error);
+                    showNotification('删除记录失败，请重试', 'error');
+                });
+        }
+    }
+
+    // 显示通知
+    function showNotification(message, type = 'info') {
+        // 创建通知元素
+        const notification = document.createElement('div');
+        notification.className = `fixed top-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 flex items-center transition-all duration-300 transform translate-x-full opacity-0`;
+
+        // 根据类型设置样式
+        if (type === 'success') {
+            notification.classList.add('bg-success', 'text-white');
+            notification.innerHTML = `<i class="fa fa-check-circle mr-2"></i> ${message}`;
+        } else if (type === 'error') {
+            notification.classList.add('bg-danger', 'text-white');
+            notification.innerHTML = `<i class="fa fa-exclamation-circle mr-2"></i> ${message}`;
+        } else {
+            notification.classList.add('bg-primary', 'text-white');
+            notification.innerHTML = `<i class="fa fa-info-circle mr-2"></i> ${message}`;
+        }
+
+        // 添加到页面
+        document.body.appendChild(notification);
+
+        // 显示通知
+        setTimeout(() => {
+            notification.classList.remove('translate-x-full', 'opacity-0');
+        }, 10);
+
+        // 3秒后隐藏通知
+        setTimeout(() => {
+            notification.classList.add('translate-x-full', 'opacity-0');
+            setTimeout(() => {
+                document.body.removeChild(notification);
+            }, 300);
+        }, 3000);
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee
+                             http://xmlns.jcp.org/xml/ns/javaee/web-app_4_0.xsd"
+         version="4.0">
+
+    <!-- 应用显示名称：在Tomcat管理界面中标识当前应用 -->
+    <display-name>Car Sales Visualization Platform</display-name>
+
+    <!-- 欢迎页配置：访问项目根路径时默认打开的页面 -->
+    <welcome-file-list>
+        <welcome-file>dashboard.html</welcome-file>
+        <welcome-file>data-management.html</welcome-file>
+        <welcome-file>index.html</welcome-file>
+    </welcome-file-list>
+
+    <!-- 关键说明：已删除原重复的FileUploadServlet配置 -->
+    <!-- 所有Servlet映射通过Java类上的@WebServlet注解实现，避免XML与注解冲突 -->
+
+    <!-- （可选）全局编码过滤器：解决POST请求中文乱码问题（若前端提交表单有中文） -->
+
+    <filter>
+        <filter-name>EncodingFilter</filter-name>
+        <filter-class>com.carsales.filter.EncodingFilter</filter-class>
+        <init-param>
+            <param-name>encoding</param-name>
+            <param-value>UTF-8</param-value>
+        </init-param>
+    </filter>
+    <filter-mapping>
+        <filter-name>EncodingFilter</filter-name>
+        <url-pattern>/*</url-pattern> <!-- 对所有请求生效 -->
+    </filter-mapping>
+
+</web-app>

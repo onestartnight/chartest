@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>乘用车销售数据可视化平台</title>
+    <!-- 引入Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!-- 引入ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    
+    <!-- 配置Tailwind自定义颜色 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#36CFC9',
+                        accent: '#722ED1',
+                        success: '#52C41A',
+                        warning: '#FAAD14',
+                        danger: '#F5222D',
+                        dark: '#1D2129',
+                        'light-dark': '#4E5969',
+                        'extra-light': '#F2F3F5'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <!-- 自定义工具类 -->
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .card-shadow {
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            }
+            .transition-all-300 {
+                transition: all 300ms ease-in-out;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-dark">
+    <!-- 顶部导航栏 -->
+    <header class="bg-white shadow-md fixed top-0 left-0 right-0 z-50 transition-all duration-300">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-2">
+                    <i class="fa fa-car text-primary text-2xl"></i>
+                    <h1 class="text-xl font-bold text-primary">乘用车销售数据可视化平台</h1>
+                </div>
+                
+                <nav class="hidden md:flex items-center space-x-6">
+                    <a href="dashboard.html" class="text-primary font-medium border-b-2 border-primary py-1">仪表盘</a>
+                    <a href="sales-analysis.html" class="text-light-dark hover:text-primary transition-all-300 py-1">销售分析</a>
+                    <a href="customer-analysis.html" class="text-light-dark hover:text-primary transition-all-300 py-1">客户分析</a>
+                    <a href="product-analysis.html" class="text-light-dark hover:text-primary transition-all-300 py-1">产品分析</a>
+                    <a href="data-management.html" class="text-light-dark hover:text-primary transition-all-300 py-1">数据管理</a>
+                </nav>
+                
+                <div class="md:hidden">
+                    <button id="mobile-menu-button" class="text-light-dark hover:text-primary">
+                        <i class="fa fa-bars text-xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 移动端菜单 -->
+        <div id="mobile-menu" class="hidden md:hidden bg-white border-t">
+            <div class="container mx-auto px-4 py-3 space-y-3">
+                <a href="dashboard.html" class="block text-primary font-medium py-2">仪表盘</a>
+                <a href="sales-analysis.html" class="block text-light-dark hover:text-primary transition-all-300 py-2">销售分析</a>
+                <a href="customer-analysis.html" class="block text-light-dark hover:text-primary transition-all-300 py-2">客户分析</a>
+                <a href="product-analysis.html" class="block text-light-dark hover:text-primary transition-all-300 py-2">产品分析</a>
+                <a href="data-management.html" class="block text-light-dark hover:text-primary transition-all-300 py-2">数据管理</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要内容 -->
+    <main class="container mx-auto px-4 pt-24 pb-16">
+        <!-- 页面标题和日期筛选 -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+            <div>
+                <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold mb-2">销售数据总览</h2>
+                <p class="text-light-dark">实时监控和分析汽车销售核心指标</p>
+            </div>
+            
+            <div class="mt-4 md:mt-0 flex items-center space-x-3">
+                <div class="relative">
+                    <input type="month" id="dashboard-date-filter" class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" value="">
+                </div>
+                <button id="refresh-data" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg transition-all-300 flex items-center">
+                    <i class="fa fa-refresh mr-2"></i>刷新数据
+                </button>
+            </div>
+        </div>
+        
+        <!-- 核心指标卡片 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- 当月总销量 -->
+            <div class="bg-white rounded-xl p-6 card-shadow hover:shadow-lg transition-all-300">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <p class="text-light-dark text-sm">当月总销量</p>
+                        <h3 id="current-month-sales" class="text-3xl font-bold mt-1">0</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                        <i class="fa fa-line-chart"></i>
+                    </div>
+                </div>
+                <div class="flex items-center text-sm">
+                    <span id="sales-trend-indicator" class="text-success flex items-center">
+                        <i class="fa fa-arrow-up mr-1"></i>5.2%
+                    </span>
+                    <span class="text-light-dark ml-2">较上月</span>
+                </div>
+            </div>
+            
+            <!-- 总销售额 -->
+            <div class="bg-white rounded-xl p-6 card-shadow hover:shadow-lg transition-all-300">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <p class="text-light-dark text-sm">当月总销售额</p>
+                        <h3 id="current-month-revenue" class="text-3xl font-bold mt-1">¥0</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
+                        <i class="fa fa-money"></i>
+                    </div>
+                </div>
+                <div class="flex items-center text-sm">
+                    <span id="revenue-trend-indicator" class="text-success flex items-center">
+                        <i class="fa fa-arrow-up mr-1"></i>8.7%
+                    </span>
+                    <span class="text-light-dark ml-2">较上月</span>
+                </div>
+            </div>
+            
+            <!-- 畅销车型 -->
+            <div class="bg-white rounded-xl p-6 card-shadow hover:shadow-lg transition-all-300">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <p class="text-light-dark text-sm">本月畅销车型</p>
+                        <h3 id="top-model" class="text-2xl font-bold mt-1">--</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center text-success">
+                        <i class="fa fa-trophy"></i>
+                    </div>
+                </div>
+                <div class="flex items-center text-sm">
+                    <span id="top-model-sales" class="text-dark font-medium">销量: 0</span>
+                    <span class="text-light-dark ml-2">占比 0%</span>
+                </div>
+            </div>
+            
+            <!-- 销售地区占比 -->
+            <div class="bg-white rounded-xl p-6 card-shadow hover:shadow-lg transition-all-300">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <p class="text-light-dark text-sm">主要销售地区</p>
+                        <h3 id="top-region" class="text-2xl font-bold mt-1">--</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-accent">
+                        <i class="fa fa-map-marker"></i>
+                    </div>
+                </div>
+                <div class="flex items-center text-sm">
+                    <span id="top-region-percentage" class="text-dark font-medium">占比: 0%</span>
+                    <span class="text-light-dark ml-2">领先第二名 0%</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 图表区域 -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <!-- 销售趋势图 -->
+            <div class="lg:col-span-2 bg-white rounded-xl p-6 card-shadow">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-bold text-lg">销售趋势分析</h3>
+                    <div class="flex space-x-2">
+                        <select id="trend-type-select" class="border border-gray-300 rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
+                            <option value="brand">按品牌</option>
+                            <option value="model">按车型</option>
+                        </select>
+                        <select id="trend-brand-select" class="border border-gray-300 rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
+                            <option value="">所有品牌</option>
+                        </select>
+                        <select id="trend-model-select" class="border border-gray-300 rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" disabled>
+                            <option value="">所有车型</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="h-[350px]">
+                    <canvas id="sales-trend-chart"></canvas>
+                </div>
+            </div>
+            
+            <!-- 车型销量占比 -->
+            <div class="bg-white rounded-xl p-6 card-shadow">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-bold text-lg">车型销量占比</h3>
+                    <button id="refresh-pie-chart" class="text-primary hover:text-primary/80 text-sm flex items-center">
+                        <i class="fa fa-refresh mr-1"></i>刷新
+                    </button>
+                </div>
+                <div class="h-[350px]">
+                    <canvas id="model-share-chart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 车型销量排行和地区销售分布 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- 车型销量排行 -->
+            <div class="bg-white rounded-xl p-6 card-shadow">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-bold text-lg">车型销量排行</h3>
+                    <select id="ranking-limit-select" class="border border-gray-300 rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
+                        <option value="5">Top 5</option>
+                        <option value="10" selected>Top 10</option>
+                        <option value="15">Top 15</option>
+                    </select>
+                </div>
+                <div class="h-[350px]">
+                    <canvas id="model-ranking-chart"></canvas>
+                </div>
+            </div>
+            
+            <!-- 地区销售分布 -->
+            <div class="bg-white rounded-xl p-6 card-shadow">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-bold text-lg">地区销售分布</h3>
+                    <select id="region-date-filter" class="border border-gray-300 rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
+                        <option value="">全部时间</option>
+                    </select>
+                </div>
+                <div class="h-[350px]">
+                    <canvas id="region-sales-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-white border-t py-6">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <p class="text-light-dark text-sm">&copy; 2023 乘用车销售数据可视化平台. 保留所有权利.</p>
+                </div>
+                <div class="flex space-x-4">
+                    <a href="#" class="text-light-dark hover:text-primary transition-all-300">
+                        <i class="fa fa-question-circle"></i> 帮助中心
+                    </a>
+                    <a href="#" class="text-light-dark hover:text-primary transition-all-300">
+                        <i class="fa fa-file-text-o"></i> 使用文档
+                    </a>
+                    <a href="#" class="text-light-dark hover:text-primary transition-all-300">
+                        <i class="fa fa-envelope-o"></i> 联系我们
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', function() {
+            // 设置默认日期为当前月份
+            const today = new Date();
+            const currentMonth = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
+            document.getElementById('dashboard-date-filter').value = currentMonth;
+            
+            // 移动端菜单切换
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            
+            mobileMenuButton.addEventListener('click', function() {
+                mobileMenu.classList.toggle('hidden');
+            });
+            
+            // 加载品牌列表
+            loadBrands();
+            
+            // 加载仪表盘数据
+            loadDashboardData();
+            
+            // 初始化图表
+            initCharts();
+            
+            // 事件监听
+            document.getElementById('refresh-data').addEventListener('click', loadDashboardData);
+            document.getElementById('dashboard-date-filter').addEventListener('change', loadDashboardData);
+            document.getElementById('refresh-pie-chart').addEventListener('click', updateModelShareChart);
+            document.getElementById('ranking-limit-select').addEventListener('change', updateModelRankingChart);
+            document.getElementById('trend-type-select').addEventListener('change', function() {
+                const type = this.value;
+                const brandSelect = document.getElementById('trend-brand-select');
+                const modelSelect = document.getElementById('trend-model-select');
+                
+                if (type === 'model') {
+                    brandSelect.disabled = false;
+                    modelSelect.disabled = false;
+                } else {
+                    brandSelect.disabled = false;
+                    modelSelect.disabled = true;
+                    modelSelect.value = '';
+                }
+                updateSalesTrendChart();
+            });
+            
+            document.getElementById('trend-brand-select').addEventListener('change', function() {
+                const brand = this.value;
+                if (brand) {
+                    loadModelsByBrand(brand);
+                } else {
+                    const modelSelect = document.getElementById('trend-model-select');
+                    modelSelect.innerHTML = '<option value="">所有车型</option>';
+                }
+                updateSalesTrendChart();
+            });
+            
+            document.getElementById('trend-model-select').addEventListener('change', updateSalesTrendChart);
+        });
+        
+        // 图表实例
+        let salesTrendChart, modelShareChart, modelRankingChart, regionSalesChart;
+        
+        // 初始化图表
+        function initCharts() {
+            // 销售趋势图
+            const trendCtx = document.getElementById('sales-trend-chart').getContext('2d');
+            salesTrendChart = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: '销量',
+                        data: [],
+                        borderColor: '#165DFF',
+                        backgroundColor: 'rgba(22, 93, 255, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            });
+            
+            // 车型销量占比图
+            const pieCtx = document.getElementById('model-share-chart').getContext('2d');
+            modelShareChart = new Chart(pieCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: [
+                            '#165DFF', '#36CFC9', '#722ED1', '#52C41A', '#FAAD14', '#F5222D'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                        }
+                    },
+                    cutout: '65%'
+                }
+            });
+            
+            // 车型销量排行图
+            const barCtx = document.getElementById('model-ranking-chart').getContext('2d');
+            modelRankingChart = new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: '销量',
+                        data: [],
+                        backgroundColor: '#165DFF',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true
+                        },
+                        y: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // 地区销售分布图
+            const regionCtx = document.getElementById('region-sales-chart').getContext('2d');
+            regionSalesChart = new Chart(regionCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: '销量',
+                        data: [],
+                        backgroundColor: '#36CFC9',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 加载仪表盘数据
+        function loadDashboardData() {
+            const selectedMonth = document.getElementById('dashboard-date-filter').value;
+            
+            // 显示加载状态
+            setLoadingState(true);
+            
+            // 加载当月总销量
+            fetch('/api/car-sales/dashboard/current-month-sales')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('current-month-sales').textContent = data;
+                    
+                    // 模拟计算销售额 (假设平均单价为15万)
+                    const revenue = data * 150000;
+                    document.getElementById('current-month-revenue').textContent = '¥' + formatNumber(revenue);
+                })
+                .catch(error => console.error('Error loading current month sales:', error));
+            
+            // 加载车型销量排行
+            updateModelRankingChart();
+            
+            // 加载销售趋势图
+            updateSalesTrendChart();
+            
+            // 加载车型销量占比图
+            updateModelShareChart();
+            
+            // 加载地区销售分布图
+            updateRegionSalesChart();
+            
+            // 隐藏加载状态
+            setTimeout(() => {
+                setLoadingState(false);
+            }, 800);
+        }
+        
+        // 更新销售趋势图
+        function updateSalesTrendChart() {
+            const type = document.getElementById('trend-type-select').value;
+            const brand = document.getElementById('trend-brand-select').value;
+            const model = document.getElementById('trend-model-select').value;
+            const selectedMonth = document.getElementById('dashboard-date-filter').value;
+            
+            // 计算当月的起止日期
+            const [year, month] = selectedMonth.split('-');
+            const daysInMonth = new Date(year, month, 0).getDate();
+            const startDate = `${year}-${month}-01`;
+            const endDate = `${year}-${month}-${daysInMonth}`;
+            
+            let url = `/api/car-sales/sales-trend?startDate=${startDate}&endDate=${endDate}`;
+            if (brand) url += `&brand=${brand}`;
+            if (model) url += `&model=${model}`;
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    const labels = Object.keys(data);
+                    const values = Object.values(data);
+                    
+                    salesTrendChart.data.labels = labels;
+                    salesTrendChart.data.datasets[0].data = values;
+                    salesTrendChart.update();
+                })
+                .catch(error => console.error('Error loading sales trend:', error));
+        }
+        
+        // 更新车型销量占比图
+        function updateModelShareChart() {
+            const selectedMonth = document.getElementById('dashboard-date-filter').value;
+            
+            let url = '/api/car-sales/sales-proportion?type=model';
+            if (selectedMonth) {
+                // 计算当月的起止日期
+                const [year, month] = selectedMonth.split('-');
+                const daysInMonth = new Date(year, month, 0).getDate();
+                const startDate = `${year}-${month}-01`;
+                const endDate = `${year}-${month}-${daysInMonth}`;
+                url += `&startDate=${startDate}&endDate=${endDate}`;
+            }
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    const labels = Object.keys(data);
+                    const values = Object.values(data);
+                    
+                    // 获取销量最高的车型
+                    if (labels.length > 0) {
+                        let maxValue = 0;
+                        let maxLabel = '';
+                        for (let i = 0; i < values.length; i++) {
+                            if (values[i] > maxValue) {
+                                maxValue = values[i];
+                                maxLabel = labels[i];
+                            }
+                        }
+                        document.getElementById('top-model').textContent = maxLabel;
+                        
+                        // 同时获取该车型的实际销量
+                        fetch(`/api/car-sales/sales-comparison?type=model&startDate=${startDate}&endDate=${endDate}`)
+                            .then(response => response.json())
+                            .then(modelSales => {
+                                document.getElementById('top-model-sales').textContent = `销量: ${modelSales[maxLabel] || 0}`;
+                            });
+                    }
+                    
+                    modelShareChart.data.labels = labels;
+                    modelShareChart.data.datasets[0].data = values;
+                    modelShareChart.update();
+                })
+                .catch(error => console.error('Error loading model share:', error));
+        }
+        
+        // 更新车型销量排行图
+        function updateModelRankingChart() {
+            const limit = document.getElementById('ranking-limit-select').value;
+            const selectedMonth = document.getElementById('dashboard-date-filter').value;
+            
+            fetch(`/api/car-sales/dashboard/model-ranking?limit=${limit}`)
+                .then(response => response.json())
+                .then(data => {
+                    const labels = Object.keys(data);
+                    const values = Object.values(data);
+                    
+                    modelRankingChart.data.labels = labels;
+                    modelRankingChart.data.datasets[0].data = values;
+                    modelRankingChart.update();
+                })
+                .catch(error => console.error('Error loading model ranking:', error));
+        }
+        
+        // 更新地区销售分布图
+        function updateRegionSalesChart() {
+            const selectedMonth = document.getElementById('dashboard-date-filter').value;
+            
+            let url = '/api/car-sales/sales-comparison?type=region';
+            if (selectedMonth) {
+                // 计算当月的起止日期
+                const [year, month] = selectedMonth.split('-');
+                const daysInMonth = new Date(year, month, 0).getDate();
+                const startDate = `${year}-${month}-01`;
+                const endDate = `${year}-${month}-${daysInMonth}`;
+                url += `&startDate=${startDate}&endDate=${endDate}`;
+            }
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    // 按销量排序
+                    const sortedEntries = Object.entries(data).sort((a, b) => b[1] - a[1]);
+                    const labels = sortedEntries.map(entry => entry[0]);
+                    const values = sortedEntries.map(entry => entry[1]);
+                    
+                    // 更新主要销售地区
+                    if (labels.length > 0) {
+                        document.getElementById('top-region').textContent = labels[0];
+                        document.getElementById('top-region-percentage').textContent = 
+                            `占比: ${((values[0] / values.reduce((a, b) => a + b, 0)) * 100).toFixed(1)}%`;
+                    }
+                    
+                    regionSalesChart.data.labels = labels;
+                    regionSalesChart.data.datasets[0].data = values;
+                    regionSalesChart.update();
+                })
+                .catch(error => console.error('Error loading region sales:', error));
+        }
+        
+        // 加载品牌列表
+        function loadBrands() {
+            fetch('/api/car-sales/brands')
+                .then(response => response.json())
+                .then(brands => {
+                    const brandSelect = document.getElementById('trend-brand-select');
+                    
+                    brands.forEach(brand => {
+                        const option = document.createElement('option');
+                        option.value = brand;
+                        option.textContent = brand;
+                        brandSelect.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Error loading brands:', error));
+        }
+        
+        // 加载指定品牌的车型
+        function loadModelsByBrand(brand) {
+            fetch(`/api/car-sales/models?brand=${brand}`)
+                .then(response => response.json())
+                .then(models => {
+                    const modelSelect = document.getElementById('trend-model-select');
+                    modelSelect.innerHTML = '<option value="">所有车型</option>';
+                    
+                    models.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model;
+                        option.textContent = model;
+                        modelSelect.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Error loading models:', error));
+        }
+        
+        // 设置加载状态
+        function setLoadingState(isLoading) {
+            const cards = document.querySelectorAll('.card-shadow');
+            
+            if (isLoading) {
+                cards.forEach(card => {
+                    card.classList.add('opacity-50');
+                    // 可以在这里添加加载动画
+                });
+            } else {
+                cards.forEach(card => {
+                    card.classList.remove('opacity-50');
+                });
+            }
+        }
+        
+        // 格式化数字为千分位
+        function formatNumber(num) {
+            return new Intl.NumberFormat('zh-CN').format(num);
+        }
+    </script>
+</body>
+</html>
